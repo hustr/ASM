@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+*.TD
+*.TR
+*.OVL
+asm/
