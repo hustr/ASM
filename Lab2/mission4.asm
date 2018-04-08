@@ -31,13 +31,13 @@ GG_INDEX DD 2 DUP(0); 一共两家店,存放查询的物品的地址在内存中
 G_INDEX	DD 0
 SHIFTLINE DB 13, 10, '$'
 S_CNT	= 2
-S_TEMP_CNT DB 2
+S_TEMP_CNT DB 0
 G_TEMP_CNT DB 0
+
 SG_INDEX DD 0
 S_INDEX DD 0
 G_COST  DD 0
 G_PRO   DD 0
-AVE_PRO DD 0
 DATA	ENDS
 
 CODE	SEGMENT USE16
@@ -154,9 +154,10 @@ S1_CK:	; 检测物品是否存在第一个商店
 		JNZ S1_CK
 		; 走到这里说明网店1有该商品
 		; 判断授权
+		; 未授权, 输出商品名跳FUNC1
 		CMP AUTH, 1
 		JZ CALCU_PR
-		; 未授权, 输出商品名跳FUNC1
+
 		LEA EBX, OFFSET IN_GOODS
 		XOR EAX, EAX
 		MOV AL, [EBX + 1]
@@ -186,61 +187,85 @@ CALCU_PR:
 		; 已检测商店个数
 		MOV S_TEMP_CNT, 0
 LOOP_S:
-		LEA EBX, OFFSET S_INDEX
+		MOV EBX, S_INDEX
 		ADD EBX, 10
 		MOV G_INDEX, EBX
-LOOP_G:	
+		MOV G_TEMP_CNT, 0
+LOOP_G:
 		; 首先找到商品位置
 		; EBX记录商品位置
 		MOV EBX, G_INDEX
+		LEA EDX, OFFSET IN_GOODS + 2
 		; 判断商品名是否为所求
 CHG_S:	; 检测循环
-		LEA EDX, OFFSET IN_GOODS + 2
 		MOV AL, [EBX]
 		MOV AH, [EDX]
 		CMP AL, AH; 不是这件商品
 		JNZ NEXT_G
+		INC EBX
+		INC EDX
+		MOV AL, [EBX]
 		; 检测是否到头
 		CMP AL, 0; 
 		JNZ CHG_S;没到头继续
-		; 到头了, 计算利润率
+		; 到头了, 说明就是这个商品，计算利润率
 		MOV ECX, G_INDEX
 		MOV AX, [ECX + 10]
 		MOV BX, [ECX + 14]
 		IMUL AX, BX
 		; 80x86低位在前
-		LEA ECX, OFFSET G_COST
-		MOV [ECX], AX
-		MOV [ECX + 2], DX
-		MOV ECX, G_INDEX
+		LEA ESI, OFFSET G_COST
+		MOVSX EAX, AX
+		MOV DS:[ESI], EAX
+		;MOV WORD PTR DS:[ESI + 2], 0
+		;MOV ECX, G_INDEX
 		MOV AX, [ECX + 12]
 		MOV BX, [ECX + 16]
 		IMUL AX, BX
-		LEA ECX, OFFSET G_PRO
-		MOV [ECX], AX
-		MOV [ECX + 2], DX
+		LEA ESI, OFFSET G_PRO
+		MOVSX EAX, AX
+		MOV DS:[ESI], EAX
+		;MOV DS:[ESI + 2], DX
 		MOV EAX, G_PRO
 		MOV EBX, G_COST
 		; 我怎么知道结果和0的大小？
 		SUB EAX, EBX
 		IMUL EAX, 100
+		MOV EDX, 0
+		CMP EAX, 0
+		JGE L1
+		MOV EDX, -1
+		;MOVSX EDX, EAX
+L1:		IDIV EBX
 		; 由于结果8个字节，一个寄存器放不下,抛弃高位EDX
 		MOV EBX, G_INDEX
-		MOV [EBX + 18], AX
-		LEA EAX, OFFSET GG_INDEX
-		XOR ECX, ECX
-		MOV CL, S_TEMP_CNT
-		ADD EAX, ECX
+		MOV [EBX + 18], AX;EAX也只取前两个字节
+		; 纠结：如何将地址放入GG_INDEX数组
+		XOR EAX, EAX
+		MOV AL, G_TEMP_CNT
+		MOV CL, 4
+		IMUL CL
+		LEA BX, OFFSET GG_INDEX
+		ADD AX, BX
+		MOV EBX, G_INDEX
 		MOV [EAX], EBX
-		; 利润率计算完成
+		;LEA EAX, OFFSET GG_INDEX
+		;MOV ECX, G_TEMP_CNT
+		;LEA EAX, OFFSET GG_INDEX
+		;XOR ECX, ECX
+		;MOV CL, S_TEMP_CNT
+		;ADD EAX, ECX
+		;MOV [EAX], EBX
+		; 利润率计算完成，下面算平均
 NEXT_G:
 		ADD G_INDEX, G_SIZE
 		INC G_TEMP_CNT
 		MOV CL, G_TEMP_CNT
 		CMP CL, G_CNT
 		; 未完成商品继续LOOP_G
-		JNZ LOOP_G
+		JL LOOP_G
 NEXT_S:
+		MOV G_TEMP_CNT, 0
 		INC S_TEMP_CNT
 		ADD S_INDEX, S_SIZE
 		MOV CL, S_TEMP_CNT
@@ -254,11 +279,18 @@ AVE:	; 计算平均利润
 		XOR AX, AX
 NEXT_IDX:
 		ADD AX, [EBX + 18]
+		; 移到下一个同种商品位置
 		ADD EDX, 4
 		MOV EBX, [EDX]
+		; 计数加一
 		INC CL
 		CMP CL, S_CNT
-		JNZ NEXT_IDX
+		JL NEXT_IDX
+		MOV EDX, 0
+		CMP AX, 0
+		JGE L2
+		MOV EDX, -1
+L2:
 		IDIV CL
 		; 计算后AL内存放结果的商，AH存放余数
 FUNC4:	
@@ -272,7 +304,7 @@ FUNC4:
 		CMP AL, 0
 		JGE SHOWD
 		JMP SHOWF
-SHOWA:
+SHOWA:	
 		MOV DL, 'A'
 		JMP SHOW
 SHOWB:
