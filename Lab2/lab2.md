@@ -24,27 +24,19 @@ calcu_rate=>operation: 计算网店1中利润率PR1
 计算平均利润率APR
 show_name=>operation: 显示商品名字
 
-
-classA=>condition: APR >= 90%?
-classB=>condition: APR >= 50%?
-classC=>condition: APR >= 20%?
-classD=>condition: APR >= 0%?
-
-
-showA=>inputoutput: 显示A
-showB=>inputoutput: 显示B
-showC=>inputoutput: 显示C
-showD=>inputoutput: 显示D
-showE=>inputoutput: 显示E
-showF=>inputoutput: 显示F
-
+class=>inputoutput: 输出等级：
+APR >= 90%? A
+APR >= 50%? B
+APR >= 20%? C
+APR >= 0%? D
+APR < 0% F
 
 
 st->notice_name->in_name->notice_pwd->in_pwd->no_name->
 pwd_check(yes, left)->auth_1->notice_goods->in_goods->goods_enter
 pwd_check(no, right)->notice_name
 no_name(no, down)->name_q
-no_name(yes, right)->notice_goods
+no_name(yes, right)->auth_0->notice_goods
 name_q(yes, down)->e
 name_q(no, down)->name_check
 name_check(yes)->pwd_check
@@ -54,16 +46,7 @@ goods_enter(no, down)->goods_is_in
 goods_is_in(no)->notice_goods
 goods_is_in(yes)->check_auth
 check_auth(no)->show_name->notice_name
-check_auth(yes)->calcu_rate->classA
-classA(yes)->showA->notice_name
-classA(no)->classB
-classB(yes)->showB->notice_name
-classB(no)->classC
-classC(yes)->showC->notice_name
-classC(no)->classD
-classD(yes)->showD->notice_name
-classD(no)->classE
-classE(yes)->showE->notice_name
-classE(no)->showF->notice_name
+check_auth(yes)->calcu_rate->class->notice_name
+
 ```
 
