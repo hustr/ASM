@@ -214,32 +214,35 @@ CHG_S:	; 检测循环
 		MOV BX, [ECX + 14]
 		IMUL AX, BX
 		; 80x86低位在前
-		LEA ESI, OFFSET G_COST
+		;LEA ESI, OFFSET G_COST
 		MOVSX EAX, AX
-		MOV DS:[ESI], EAX
+		MOV G_COST, EAX
 		;MOV WORD PTR DS:[ESI + 2], 0
 		;MOV ECX, G_INDEX
 		MOV AX, [ECX + 12]
 		MOV BX, [ECX + 16]
 		IMUL AX, BX
-		LEA ESI, OFFSET G_PRO
+		;LEA ESI, OFFSET G_PRO
 		MOVSX EAX, AX
-		MOV DS:[ESI], EAX
+		;MOV DS:[ESI], EAX
+		MOV G_PRO, EAX
 		;MOV DS:[ESI + 2], DX
 		MOV EAX, G_PRO
 		MOV EBX, G_COST
 		; 我怎么知道结果和0的大小？
 		SUB EAX, EBX
 		IMUL EAX, 100
-		MOV EDX, 0
-		CMP EAX, 0
-		JGE L1
-		MOV EDX, -1
+		CDQ
 		;MOVSX EDX, EAX
-L1:		IDIV EBX
+		;MOV EDX, 0
+		;CMP EAX, 0
+		;JGE L1
+		;MOV EDX, -1
+		;MOVSX EDX, EAX
+		IDIV EBX
 		; 由于结果8个字节，一个寄存器放不下,抛弃高位EDX
-		MOV EBX, G_INDEX
-		MOV [EBX + 18], AX;EAX也只取前两个字节
+		;MOV EBX, G_INDEX
+		MOV [ECX + 18], AX;EAX也只取前两个字节
 		; 纠结：如何将地址放入GG_INDEX数组
 		XOR EAX, EAX
 		MOV AL, G_TEMP_CNT
@@ -286,11 +289,13 @@ NEXT_IDX:
 		INC CL
 		CMP CL, S_CNT
 		JL NEXT_IDX
-		MOV EDX, 0
-		CMP AX, 0
-		JGE L2
-		MOV EDX, -1
-L2:
+		CWD
+		;MOVSX EDX, AX
+		;MOV EDX, 0
+		;CMP AX, 0
+		;JGE L2
+		;MOV EDX, -1
+;L2:
 		IDIV CL
 		; 计算后AL内存放结果的商，AH存放余数
 FUNC4:	

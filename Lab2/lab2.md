@@ -1,3 +1,5 @@
+主流程图
+
 ```flow
 st=>start: 开始
 e=>end: 结束
@@ -48,5 +50,76 @@ goods_is_in(yes)->check_auth
 check_auth(no)->show_name->notice_name
 check_auth(yes)->calcu_rate->class->notice_name
 
+```
+
+判断输入用户名是否正确，密码同等逻辑
+
+```flow
+st=>start: 开始
+in=>inputoutput: 输入用户名到缓冲区IN_NAME
+name_0=>condition: IN_NAME[1] == 0?
+输入用户名长度是否为0?
+func3=>operation: 跳到功能3
+cmp_len=>condition: IN_NAME[1] == NAME_LEN?
+输入用户名长度正确？
+name_1=>condition: IN_NAME[1] == 1?
+输入用户名长度为1？
+name_q=>condition: 输入为q
+lea=>operation: LEA EBX, OFFSET IN_NAME + 2
+LEA EDX, OFFSET BNAME
+load_str=>operation: MOV AL, [EBX]
+MOV AH, [EDX]
+INC EDX
+INC EBX
+equal=>condition: AH == AL?
+cmp_end=>condition: MOV AL, [EBX]
+AL == 0?
+auth_1=>operation: MOV AUTH, 1
+auth_0=>operation: MOV AUTH, 0
+e=>end: 结束
+
+st->in->cmp_len
+cmp_len(yes)->lea->load_str->equal
+equal(yes)->cmp_end
+equal(no, left)->in
+cmp_end(yes)->auth_1->func3
+cmp_end(no)->load_str
+cmp_len(no)->name_1
+name_1(yes)->name_q
+name_1(no)->name_0
+name_0(yes)->auth_0->func3->e
+name_0(no)->in
+name_q(yes)->e
+name_q(no)->in
+
+```
+
+
+
+计算利润率的函数
+
+```flow
+s=>start: 开始
+lea=>operation: MOV ECX, G_INDEX
+; G_INDEX中为地址不能直接使用
+cal_cost=>operation: MOV AX, [ECX + 10]
+MOV BX, [ECX + 14]
+IMUL AX, BX
+MOVSX EAX, AX
+MOV G_COST, EAX
+cal_pro=>operation: MOV AX, [ECX + 12]
+MOV BX, [ECX + 16]
+IMUL AX, BX
+MOVSX EAX, AX
+MOV G_PRO, EAX
+cal_rate=>operation: MOV EAX, G_PRO
+MOV EBX, G_COST
+SUB EAX, EBX
+CWD
+IDIV BX
+MOV [ECX + 18], AX
+e=>end: 结束
+
+s->lea->cal_cost->cal_pro->cal_rate->e
 ```
 
