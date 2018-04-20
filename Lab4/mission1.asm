@@ -11,7 +11,7 @@ BNAME  	DB 'yaning', 4 DUP(0); 用户名
 BPASS	DB 'passwd', 4 DUP(0); 密码
 IN_NAME DB 20, ?, 20 DUP(0)
 IN_PWD	DB 20, ?, 20 DUP(0)
-G_CNT	= 60
+G_CNT	= 5
 S1		DB 'SHOP1', 5 DUP(0)
 BAG1	DB 'BAG', 7 DUP(0)
 		DW 12, 30, 1000, 5, ? ; 利润率未计算
@@ -21,9 +21,7 @@ GA1		DB 'PEN', 7 DUP(0)
 GA2		DB 'BOOK', 6 DUP(0)
 		DW 12, 30, 25, 5, ? ; 利润率未计算
 GAN		DB G_CNT - 3 DUP('Temp-Value', 15, 0, 20, 0, 30, 0, 2, 0, ?, ?); 其他商品暂时未知
-
 S_SIZE	= $ - S1
-
 S2 		DB 'SHOP2', 5 DUP(0) ;网店名称，用0结束
 BAG2	DB 'BAG', 7 DUP(0)
 		DW 12, 30, 2000, 2, ? ; 利润率未计算
@@ -58,6 +56,9 @@ NUM 	DD 0
 
 ; 菜单函数中输入选项使用
 STRLEN	DW 0
+; 输入商店名
+NOTICE_SHOP	DB 'Please enter shop name: $'
+IN_SHOP	DB 10, ?, 10 DUP(0)
 ; 地址存放，字符串比较使用
 ADD1	DW 0
 ADD2	DW 0
@@ -69,10 +70,38 @@ IN_NUM DB 20, ?, 20 DUP(0)
 ; 选项二的地址参数
 ADD3	DW 0
 ADD4	DW 0
+MYBP	DW 0
 ; 输出提示
 COST 	DB 'Buy cost: $'
 PRICE	DB 'Sale price: $'
 BUY_CNT DB 'Buy count: $'
+; 排序函数中使用的地址数组
+IDXES	DW G_CNT DUP(0)
+MAX		DW 0
+RANK	DW 0
+; 输出全部信息函数使用的数据段
+; shop1中
+; 进价
+; 售价
+; 进货量
+; 销售量
+; shop2中
+; 进价
+; 售价
+; 进货量
+; 销售量
+; 平均利润里
+; 利润率排名
+PRINT_SHOP1	DB 'In shop1: $'
+PRINT_SHOP2 DB 'IN shop2: $'
+PRINT_BUY	DB 'in price: $'
+PRINT_SELL	DB 'sell price: $'
+PRINT_BUY_CNT	DB 'buy count: $'
+PRINT_SELL_CNT	DB 'sell count: $'
+PRINT_PRO	DB 'profile: $'
+PRINT_RANK	DB 'rank: $'
+; print_one数据区
+PRINT_ONE_BP DW 0
 DATA	ENDS
 
 ; 输出字符串的宏
@@ -180,9 +209,48 @@ LOOP_PWD:
 		MOV AUTH, 1
 		; 进入功能3
 FUNC3:
-	; 显示菜单
-	CALL SHOW_MENU
-	; 返回值是AL中的选项
+		; 显示菜单
+		CALL SHOW_MENU
+		; 返回值是AL中的选项
+		; 合法就向下找对应的选项
+		CMP AL, 1
+		JE OPT_1
+		CMP AL, 2
+		JE OPT_2
+		CMP AL, 3
+		JE OPT_3
+		CMP AL, 4
+		JE OPT_4
+		CMP AL, 5
+		JE OPT_5
+		CMP AL, 6
+		JE OPT_6
+		JMP FUNC3
+OPT_1:
+		CALL QUERYP
+		JMP FUNC3
+OPT_2:
+		WRITE <OFFSET NOTICE_SHOP>
+		READ <OFFSET IN_SHOP>
+		CRLF
+		PUSH OFFSET IN_SHOP[2]
+		WRITE <OFFSET NOTICE_GOODS>
+		READ <OFFSET IN_GOODS>
+		CRLF
+		PUSH OFFSET IN_GOODS[2]
+		CALL MODIFYP
+		JMP FUNC3
+OPT_3:
+		CALL CALCU_ALL
+		JMP FUNC3
+OPT_4:
+		CALL SORT_PROP
+		JMP FUNC3
+OPT_5:
+		CALL PRINT_ALLP
+		JMP FUNC3
+OPT_6:
+		JMP QUIT
 FUNC4:
 		; 时间计算一下
 		CALL GET_MS
@@ -263,7 +331,7 @@ GET_MS PROC
 		POP EBX
 		RET
 GET_MS ENDP
-; 函数：计算一个商品的所有利润率
+; 函数：计算一个商品的平均利润率
 ; 参数：第一个商店里的物品的偏移地址
 ; 返回值：利润率AX
 CALCUG_PRO PROC
@@ -273,11 +341,11 @@ CALCUG_PRO PROC
 		PUSH ECX
 		PUSH EDX
 		PUSH SI
-		MOV G_PRO, 0
+		MOV DWORD PTR G_PRO, 0
 		MOV SI, WORD PTR _ADD
 		MOV CX, S_CNT
 L1:
-		PUSH WORD PTR G_PRO
+		PUSH DWORD PTR G_PRO
 		XOR EAX, EAX
 		XOR EBX, EBX
 		XOR EDX, EDX
@@ -298,12 +366,15 @@ L1:
 		IMUL EAX, 100
 		CDQ
 		IDIV EBX; 得出结果
-		POP WORD PTR G_PRO
+		POP DWORD PTR G_PRO
 		ADD G_PRO, EAX
 		ADD SI, S_SIZE
 		LOOP L1
 		; 恢复现场并返回
 		MOV EAX, G_PRO; AX为低位
+		CDQ
+		MOV EBX, S_CNT
+		IDIV EBX
 		POP SI
 		POP EDX
 		POP ECX
@@ -325,7 +396,7 @@ PRINT_NUM PROC
 		PUSH EBX
 		MOV EBX, 10
 		MOV EAX, NUM
-		XOR ECX, ECX
+		XOR CX, CX
 		CDQ
 		CMP EAX, 0
 		JGE L2
@@ -340,12 +411,12 @@ PRINT_NUM PROC
 		NEG EAX
 		
 L2:
+		CDQ
 		IDIV EBX
 		ADD DL, '0'
 		PUSH DX
 		; 还原EDX的实际情况
-		CDQ
-		INC ECX
+		INC CX
 		CMP EAX, 0
 		JG L2
 		; 栈里一共ECX个数字可用
@@ -368,6 +439,7 @@ PRINT_NUM ENDP
 ; 返回值：输入的菜单选项，存放在AL中
 SHOW_MENU PROC
 		PUSH BX
+		PUSH CX
 		PUSH DX
 		PUSH DI
 		WRITE <OFFSET query>
@@ -377,8 +449,7 @@ SHOW_MENU PROC
 		MOV DI, OFFSET modify
 		MOV CX, 4
 SHOW_MENU_LOOP1:
-		PUSH DI
-		WRITE DI
+		WRITE <DI>
 		CRLF
 		ADD DI, 40
 		LOOP SHOW_MENU_LOOP1
@@ -386,23 +457,13 @@ STR6:
 		WRITE <OFFSET exit>
 		CRLF
 		; 输入选项部分
-		MOV AH, 1
-		INT 21H
-		MOV AL, DL
-		SUB AL, '0'
-		CMP AL, 0
-		JL	SHOW_MENU_ERR 
-		CMP AL, 9
-		JG SHOW_MENU_ERR
-		JMP SHOW_MENU_EXIT
-SHOW_MENU_ERR:
-		; 输入错误递归调用此函数; 直到用户输入一个正常值
-		CALL SHOW_MENU
-SHOW_MENU_EXIT:
+		CALL GET_NUM
+		CRLF
 		;恢复环境
 		POP DI
 		POP DX
-		POP BX 
+		POP CX
+		POP BX
 		RET
 SHOW_MENU ENDP
 ; 二进制转10进制函数？
@@ -526,14 +587,12 @@ QUERYP	PROC
 		PUSH DI
 		; 输出提示
 		WRITE <OFFSET NOTICE_GOODS>
-		CRLF
 		; 输入商品名
 		READ <OFFSET IN_GOODS>
+		CRLF
 		; 开始在商店一寻找商品
 		MOV CX, G_CNT
-		LEA DI, S1
-		; 转移到第一个商品处
-		ADD DI, 10
+		MOV DI, OFFSET S1[10]
 		XOR EBX, EBX
 		MOV BL, IN_GOODS[1]
 		; EBX移动到输入名下一个位置
@@ -558,21 +617,23 @@ END_QUERY_LOOP1:
 		;已售数量”顺序显示该商品的信息，同时还要将“SHOP2”中该商品的信息也显示出来。
 		WRITE <OFFSET SHOP1_STR>
 		COMMA
-		WRITE <OFFSET IN_GOODS>
+		WRITE <OFFSET IN_GOODS[2]>
 		COMMA
-		XOR EAX, EAX
 		; 得出销售价
 		MOV AX, [DI + 12]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		COMMA
 		; 进货总数
 		MOV AX, [DI + 14]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		COMMA
 		; 已售总量
 		MOV AX, [DI + 16]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		CRLF
@@ -580,21 +641,23 @@ END_QUERY_LOOP1:
 		ADD DI, S_SIZE
 		WRITE <OFFSET SHOP2_STR>
 		COMMA
-		WRITE <OFFSET IN_GOODS>
+		WRITE <OFFSET IN_GOODS[2]>
 		COMMA
-		XOR EAX, EAX
 		; 得出销售价
 		MOV AX, [DI + 12]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		COMMA
 		; 进货总数
 		MOV AX, [DI + 14]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		COMMA
 		; 已售总量
 		MOV AX, [DI + 16]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		CRLF
@@ -614,7 +677,8 @@ QUERYP 	ENDP
 ; 返回值，无
 MODIFYP 	PROC
 		; 首先获取参数
-		POP BP
+		POP MYBP
+		; ADD3是第一个参数，是商品名吧
 		POP WORD PTR ADD3
 		POP WORD PTR ADD4
 		PUSH EAX
@@ -624,14 +688,14 @@ MODIFYP 	PROC
 		; 首先比较商店
 		MOV DI, OFFSET S1
 		PUSH DI
-		PUSH OFFSET ADD3
+		PUSH ADD4
 		CALL CMP_STR
 		; 是这个shop进入下环节
 		CMP AL, 0
 		JZ FIND_GOODS
 		MOV DI, OFFSET S2
 		PUSH DI
-		PUSH OFFSET ADD3
+		PUSH ADD4
 		CALL CMP_STR
 		CMP AL, 0
 		; 进入下环节
@@ -648,7 +712,7 @@ FIND_GOODS:
 		MOV CX, G_CNT
 LOOP_GOODS:
 		PUSH DI
-		PUSH OFFSET ADD4
+		PUSH WORD PTR ADD3
 		; 比较字符串是否相同
 		CALL CMP_STR
 		CMP AL, 0
@@ -660,49 +724,68 @@ LOOP_GOODS:
 FOUND_GOOD:
 ; 改变进货价
 CHG_COST:
-		XOR EAX, EAX
 		WRITE <OFFSET COST>
 		MOV AX, [DI + 10]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		; 逗号分隔开 
 		COMMA
-		; 获取数字
-		CALL GET_NUM
-		; 换行
+		; 尝试获取数字
+		READ <OFFSET IN_NUM>
 		CRLF
-		; 如果获取不成功继续循环
+		CMP BYTE PTR IN_NUM[1], 0
+		JE  CHG_PRICE
+		PUSH OFFSET IN_NUM[2]
+		MOV AL, IN_NUM[1]
+		MOV AH, 0
+		PUSH AX
+		CALL FSTRT2
 		CMP AX, -1
-		JZ CHG_COST
+		JE CHG_COST
 		; 将得到的数字的低两字节放入位置
 		MOV [DI + 10], AX
-; 修改进价
 CHG_PRICE:
 ;同等逻辑
-		XOR EAX, EAX
 		WRITE <OFFSET PRICE>
 		MOV AX, [DI + 12]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		COMMA
-		; 获取数字
-		CALL GET_NUM
+		; 尝试获取数字
+		READ <OFFSET IN_NUM>
 		CRLF
+		CMP IN_NUM[1], 0
+		JE  CHG_CNT
+		PUSH OFFSET IN_NUM[2]
+		MOV AL, IN_NUM[1]
+		MOV AH, 0
+		PUSH AX
+		CALL FSTRT2
 		CMP AX, -1
-		JZ CHG_PRICE
+		JE CHG_PRICE
 		MOV [DI + 12], AX
 ;; 修改进货数量
 CHG_CNT:
-		XOR EAX, EAX
 		WRITE <OFFSET BUY_CNT>
 		MOV AX, [DI + 14]
+		MOVSX EAX, AX
 		PUSH EAX
 		CALL PRINT_NUM
 		COMMA
-		CALL GET_NUM
+		; 尝试获取数字
+		READ <OFFSET IN_NUM>
 		CRLF
+		CMP BYTE PTR IN_NUM[1], 0
+		JE  NO_GOODS_1
+		PUSH OFFSET IN_NUM[2]
+		MOV AL, IN_NUM[1]
+		MOV AH, 0
+		PUSH AX
+		CALL FSTRT2
 		CMP AX, -1
-		JZ CHG_CNT
+		JE CHG_CNT
 		MOV [DI + 14], AX
 NO_GOODS_1:
 NO_SHOP:
@@ -711,14 +794,228 @@ NO_SHOP:
 		POP ECX
 		POP EBX
 		POP EAX
-		PUSH BP
+		PUSH MYBP
 		RET
 MODIFYP ENDP
+; 获取所有商品平均利润率函数
+; 参数：无
+; 返回值：无
+CALCU_ALL PROC
+		PUSH AX
+		PUSH DI
+		MOV CX, G_CNT
+		MOV DI, OFFSET S1[10]
+CALCU_ALL_LOOP1:
+		PUSH DI
+		CALL CALCUG_PRO
+		MOV [DI + 18], AX
+		ADD DI, G_SIZE
+		LOOP CALCU_ALL_LOOP1
+		POP DI
+		POP AX
+		RET
+CALCU_ALL ENDP
+
+; 平均利润率排名函数
+; 我选择使用选择排序
+; 参数：无
+; 返回值：无
+SORT_PROP	PROC
+		PUSH EAX
+		PUSH EBX
+		PUSH ECX
+		PUSH EDX
+		PUSH DI
+		PUSH SI
+		MOV CX, G_CNT
+		MOV BX, OFFSET IDXES
+		MOV DI, OFFSET S1[10]
+		; 获取所有的商品偏移地址
+GET_IDX_LOOP:
+		MOV [BX], DI
+		ADD DI, G_SIZE
+		; 每次后移两字节
+		ADD BX, 2
+		LOOP GET_IDX_LOOP
+		; 获取地址完毕，对地址对应商品排序
+		; 通过对利润率排名，将排名结果放到shop2对应的利润字段
+		; RANK存储排名, 排名从1开始吧
+		MOV RANK, 1
+		; CX控制外层循环
+		MOV CX, G_CNT
+		; BX指向第一个物品偏移地址的地址
+		MOV BX, OFFSET IDXES
+SORT_OUT_LOOP:
+		PUSH CX
+		PUSH BX
+		; AX存放已知最大利润率
+		MOV AX, -1
+		; DI获取商品地址
+		MOV DI, [BX]
+		; 获取此商品利润率
+		MOV AX, [DI + 18]
+		MOV MAX, BX
+		; 需要从BX下一个物品处开始循环
+		; CX现在的数值就是剩余的商品数量加1
+SORT_IN_LOOP:
+		DEC CX
+		CMP CX, 0
+		JE NOT_BIG
+		ADD BX, 2
+		MOV DI, [BX]
+		MOV DX, [DI + 18]
+		CMP DX, AX
+		; 此商品比最大的利润值小到NOT_BIG
+		JLE NOT_BIG
+		; 否则此商品就是最大的，
+		MOV AX, DX
+		; 获取地址在数组中的地址
+		MOV MAX, BX
+NOT_BIG:
+		CMP CX, 0
+		JG SORT_IN_LOOP
+		; 结束，交换
+		POP BX
+		; 将最大的与现在的下标所属元素交换
+		MOV AX, [BX]
+		MOV DI, MAX
+		MOV DI, [DI]
+		MOV [BX], DI
+		MOV DI, MAX
+		MOV [DI], AX
+		MOV DI, [BX]
+		MOV AX, RANK
+		INC WORD PTR RANK
+		ADD DI, S_SIZE
+		MOV [DI + 18], AX
+		ADD BX, 2
+		POP CX
+		LOOP SORT_OUT_LOOP
+		POP SI
+		POP DI
+		POP EDX
+		POP ECX
+		POP EBX
+		POP EAX
+		RET
+SORT_PROP ENDP
+; 输出全部信息函数
+; 参数：无
+; 返回值：无
+; 将SHOP1和SHOP2中的所有商品信息显示到屏幕上，包括平均利润率和排名（替代了商品原有的利润率字段）。
+;具体的显示格式自行定义（可以分网店显示，也可以按照商品排名显示，等等，显示方式可以作为子程序的入口参数）。
+PRINT_ALLP PROC
+		PUSH EBX
+		PUSH ECX
+		PUSH DI
+		; 输出好办啊
+		; 商品数量
+		MOV CX, G_CNT
+		; BX指向shop1中商品
+		; DI指向shop2中商品
+		MOV BX, OFFSET S1[10]
+		MOV DI, OFFSET S2[10]
+		; 开始循环吧
+PRINT_ALL_LOOP1:
+		PUSH BX
+		PUSH DI
+		CALL PRINT_ONE
+		ADD BX, G_SIZE
+		ADD DI, G_SIZE
+		LOOP PRINT_ALL_LOOP1
+		POP DI
+		POP ECX
+		POP EBX
+		RET
+PRINT_ALLP ENDP
+
+; 输出一个商品
+; 参数：商品在两个商店中的偏移
+; 返回值：无
+PRINT_ONE PROC
+		POP PRINT_ONE_BP
+		POP ADD1
+		POP ADD2
+		PUSH EAX
+		PUSH EBX
+		PUSH DI
+		MOV BX, ADD2
+		MOV DI, ADD1
+		WRITE <OFFSET PRINT_SHOP1>
+		WRITE <OFFSET PRINT_BUY>
+		MOV AX, [BX + 10]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		WRITE <OFFSET PRINT_SELL>
+		MOV AX, [BX + 12]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		WRITE <OFFSET PRINT_BUY_CNT>
+		MOV AX, [BX + 14]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		WRITE <OFFSET PRINT_SELL_CNT>
+		MOV AX, [BX + 16]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		CRLF
+		WRITE <OFFSET PRINT_SHOP2>
+		WRITE <OFFSET PRINT_BUY>
+		MOV AX, [DI + 10]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		WRITE <OFFSET PRINT_SELL>
+		MOV AX, [DI + 12]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		WRITE <OFFSET PRINT_BUY_CNT>
+		MOV AX, [DI + 14]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		WRITE <OFFSET PRINT_SELL_CNT>
+		MOV AX, [DI + 16]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		CRLF
+		; 输出利润率
+		WRITE <OFFSET PRINT_PRO>
+		MOV AX, [BX + 18]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		COMMA
+		; 输出排名
+		WRITE <OFFSET PRINT_RANK>
+		MOV AX, [DI + 18]
+		MOVSX EAX, AX
+		PUSH EAX
+		CALL PRINT_NUM
+		CRLF
+		POP DI
+		POP EBX
+		POP EAX
+		PUSH PRINT_ONE_BP
+		RET
+PRINT_ONE ENDP
 
 ; 比较两个字符串
 ; 参数：两个字符串的偏移地址
 ; 返回值AL: 1:不想等，0：相等
-; 以第一个字符串结尾为准，调用着注意
+; 以第一个字符串结尾为准，调用时注意
 CMP_STR PROC
 		POP BP
 		POP WORD PTR ADD1
@@ -729,8 +1026,8 @@ CMP_STR PROC
 		PUSH DI
 		XOR EBX, EBX
 		XOR EDX, EDX
-		MOV BX, ADD1
-		MOV DX, ADD2
+		MOV BX, ADD2
+		MOV DX, ADD1
 		MOV AL, 1
 CMP_STR_LOOP1:
 		MOV CH, [EBX]
@@ -756,7 +1053,6 @@ CMP_STR ENDP
 ; 返回值：输入的数字EAX，数字过大将会被截断
 ; 注意：请求失败返回-1，所以返回-1有可能是输入的-1也肯能是请求失败
 GET_NUM PROC
-		PUSH AX
 		READ <OFFSET IN_NUM>
 		PUSH OFFSET IN_NUM[2]
 		MOV AH, 0
@@ -764,7 +1060,6 @@ GET_NUM PROC
 		PUSH AX
 		; 解析交给函数去做
 		CALL FSTRT2
-		POP AX
 		RET
 GET_NUM ENDP
 
