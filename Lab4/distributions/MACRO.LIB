@@ -1,0 +1,43 @@
+; 输出字符串的宏
+; 参数：字符串偏移地址
+; 返回值：无
+WRITE 	MACRO A
+		PUSH AX
+		PUSH DX
+		MOV DX, A
+		MOV AH, 9
+		INT 21H
+		POP DX
+		POP AX
+		ENDM
+; 读入字符串宏
+; 参数：缓冲区偏移地址
+; 返回值：无
+READ	MACRO A
+		PUSH DX
+		PUSH AX
+		MOV DX, A
+		MOV AH, 10
+		INT 21H
+		POP AX
+		POP DX
+		ENDM
+; 换行宏
+; 参数：无
+; 返回值：无
+CRLF 	MACRO
+		WRITE <OFFSET SHIFTLINE>
+		ENDM
+; 输出逗号
+; 参数：无
+; 返回值：无
+COMMA 	MACRO
+		PUSH DX
+		PUSH AX
+		MOV DL, ','
+		MOV AH, 2
+		INT 21H
+		POP AX
+		POP DX
+		ENDM
+		
