@@ -29,6 +29,7 @@ void prints(char *s) {
 }
 
 int scans(char *s) {
+    s[0] = 0;
     scanf("%s", s);
     int num = strlen(s);
     return num;
