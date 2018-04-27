@@ -361,7 +361,6 @@ LOOP_GOODS:
         LOOP LOOP_GOODS
         JMP NO_GOODS_1
 FOUND_GOOD:
-		;push edi
 ; 改变进货价
 CHG_COST:
         invoke WRITE, OFFSET COST

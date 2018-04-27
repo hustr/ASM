@@ -65,7 +65,7 @@ void PRINT_NUM(int num) {
 
 int main(void) {
     char name[] = "yaning", passwd[] = "passwd";
-    char in_name[100], in_passwd[100];
+    char in_name[100] = { 0, }, in_passwd[100] = { 0, };
 
     while (1) {
         printf("Plase enter user name: ");
@@ -81,7 +81,7 @@ int main(void) {
             break;
         }
     }
-    char in_shop[20], in_goods[20];
+    char in_shop[20] = { 0, }, in_goods[20] = { 0, };
     int choice = 0;
     while (choice != 6) {
         choice = SHOW_MENU();
