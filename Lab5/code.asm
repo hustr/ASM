@@ -2,6 +2,7 @@
 .model flat, c
 .stack 400
 .data
+; 声明为共享数据
 public AUTH, S1
 
 G_CNT   = 4
@@ -61,6 +62,7 @@ RANK    DW 0
 
 _comma DB ",", 0
 .code
+; 函数共享
 public SHOW_MENU, QUERYP, MODIFYP, SORT_PROP, CALCU_ALL
 
 ; C中的函数
@@ -68,8 +70,9 @@ public SHOW_MENU, QUERYP, MODIFYP, SORT_PROP, CALCU_ALL
 PRINT_NUM proto c, num : DWORD
 prints proto c, s : dword
 scans proto c, s : dword
+
 ; 输出字符串
-; 参数：字符串偏移地址
+; 参数：字符串地址
 ; 返回值：无
 WRITE   proc A:dword
 		push eax
@@ -79,7 +82,7 @@ WRITE   proc A:dword
 WRITE   endp
 
 ; 读入字符串
-; 参数：缓冲区偏移地址
+; 参数：缓冲区地址
 ; 返回值：无
 READ    proc A:dword
 		push eax

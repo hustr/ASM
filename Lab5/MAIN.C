@@ -12,7 +12,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+    // 汇编中变量声明
     extern char AUTH, S1;
+    // 汇编模块声明
     extern int SHOW_MENU();
     extern void QUERYP(char *goods);
     extern void MODIFYP(char *shop, char *goods);
@@ -32,19 +34,21 @@ int scans(char *s) {
     return num;
 }
 
+// 功能5，输出全部的商品信息
 void print_allp() {
-    char *shop2 = &S1 + S_SIZE;
+    // 获取两个商店中的商品首地址
     char *goods1 = &S1 + 10;
-    char *goods2 = shop2 + 10;
+    char *goods2 = &S1 + S_SIZE + 10;
     for (int i = 0; i < G_CNT; ++i) {
         printf("%s: \n", goods1);
+        // 获取数据首地址
         short *data1 = (short*)(goods1 + 10);
         short *data2 = (short*)(goods2 + 10);
         printf("In shop1: ");
         printf("sell price: %d, ", data1[1]);
         printf("buy count: %d, ", data1[2]);
         printf("sell count: %d.\n", data1[3]);
-        printf("In shop1: ");
+        printf("In shop2: ");
         printf("sell price: %d, ", data2[1]);
         printf("buy count: %d, ", data2[2]);
         printf("sell count: %d.\n", data2[3]);
