@@ -6,6 +6,7 @@ START:
 		CLI;关闭中断响应
 		MOV AX, 0F000H;
 		MOV DS, AX; 
+		; 直接将旧中断写回
 		MOV DX, 11E0H
 		MOV AX, 2516H
 		INT 21H

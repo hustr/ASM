@@ -7,12 +7,14 @@ NEW16H  PROC
 		JE GETKEY
 		CMP AH, 10H
 		JE GETKEY
+		; 调用旧中断
 		CALL DWORD PTR CS:OLD_INT
 		JMP ENDINT
 GETKEY:
 		PUSHF
 		CALL DWORD PTR OLD_INT
 		; 获取了扫描码和ASCII码
+		; 判断大小写并转换
 		CMP AL, 'a'
 		JL 	ENDINT
 		CMP AL, 'z'

@@ -20,8 +20,6 @@ GET_INT PROC
 		RET
 GET_INT ENDP
 START:
-		;MOV AX, DATA
-		;MOV DS, AX
 		; code after this
 		; 这个还行，直接读取
 		MOV AL, 1H
