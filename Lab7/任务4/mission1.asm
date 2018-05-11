@@ -17,21 +17,21 @@ BAG1	DB 'BAG', 7 DUP(0)
 		DW 12, 30, 1000, 5, ? ; 利润率未计算
 G_SIZE  = $ - BAG1
 GA1		DB 'PEN', 7 DUP(0)
-		DW 35 XOR 'X', 56 XOR 'X', 70 XOR 'X', 25 XOR 'X', ? ; 利润率未计算
+		DW 35 XOR 'p', 56 XOR 'p', 70 XOR 'p', 25 XOR 'p', ? ; 利润率未计算
 GA2		DB 'BOOK', 6 DUP(0)
-		DW 12 XOR 'X', 30 XOR 'X', 25 XOR 'X', 5 XOR 'X', ? ; 利润率未计算
+		DW 12 XOR 'p', 30 XOR 'p', 25 XOR 'p', 5 XOR 'p', ? ; 利润率未计算
 GAN		DB 'TempValue',0
-		DW 15 XOR 'X', 20 XOR 'X', 30 XOR 'X', 2 XOR 'X', ?; 其他商品暂时未知
+		DW 15 XOR 'p', 20 XOR 'p', 30 XOR 'p', 2 XOR 'p', ?; 其他商品暂时未知
 S_SIZE	= $ - S1
 S2 		DB 'SHOP2', 5 DUP(0) ;网店名称，用0结束
 BAG2	DB 'BAG', 7 DUP(0)
-		DW 12 XOR 'X', 30 XOR 'X', 2000 XOR 'X', 2 XOR 'X', ? ; 利润率未计算
+		DW 12 XOR 'p', 30 XOR 'p', 2000 XOR 'p', 2 XOR 'p', ? ; 利润率未计算
 GB1   	DB 'PEN', 7 DUP(0) ;商品名称
-		DW 35 XOR 'X', 50 XOR 'X', 30 XOR 'X', 24 XOR 'X', ?  ;利润率还未计算
+		DW 35 XOR 'p', 50 XOR 'p', 30 XOR 'p', 24 XOR 'p', ?  ;利润率还未计算
 GB2   	DB 'BOOK', 6 DUP(0) ; 商品名称
-		DW 12 XOR 'X', 28 XOR 'X', 20 XOR 'X', 15 XOR 'X', ? ;利润率还未计算
+		DW 12 XOR 'p', 28 XOR 'p', 20 XOR 'p', 15 XOR 'p', ? ;利润率还未计算
 GBN		DB 'TempValue',0
-		DW 15 XOR 'X', 20 XOR 'X', 30 XOR 'X', 2 XOR 'X', ?
+		DW 15 XOR 'p', 20 XOR 'p', 30 XOR 'p', 2 XOR 'p', ?
 AUTH	DB 0; 标志是否通过验证
 GG_INDEX DD 2 DUP(0); 一共两家店,存放查询的物品的地址在内存中
 G_INDEX	DD 0
@@ -171,7 +171,7 @@ CHECK_NAME:
 		INC ERR_TIME
 		CMP ERR_TIME, 3
 		JE FUNC3
-		JMP FUNC2
+		JMP FUNC1
 CK_PASSWD:
 		PUSH OFFSET IN_PWD[2]
 		CALL GetHash
@@ -182,7 +182,7 @@ CK_PASSWD:
 		INC ERR_TIME
 		CMP ERR_TIME, 3
 		JE FUNC3
-		JMP FUNC2
+		JMP FUNC1
 		; 进入功能3
 FUNC3:
 		; 显示菜单
@@ -312,7 +312,7 @@ PRINT_NUM PROC
 		PUSH ECX
 		PUSH EBX
 		MOV AX, [BP + 4]
-		XOR AX, 'X'
+		XOR AL, IN_PWD[2]
 		MOVSX EAX, AX
 		MOV EBX, 10
 		XOR CX, CX
@@ -597,7 +597,7 @@ CHG_COST:
 		CMP AX, -1
 		JE CHG_COST
 		; 将得到的数字的低两字节放入位置
-		XOR AX, 'X'
+		XOR AL, IN_PWD[2]
 		MOV [DI + 10], AX
 CHG_PRICE:
 ;同等逻辑
@@ -617,7 +617,7 @@ CHG_PRICE:
 		CALL FSTRT2
 		CMP AX, -1
 		JE CHG_PRICE
-		XOR AX, 'X'
+		XOR AL, IN_PWD[2]
 		MOV [DI + 12], AX
 ;; 修改进货数量
 CHG_CNT:
@@ -637,7 +637,7 @@ CHG_CNT:
 		CALL FSTRT2
 		CMP AX, -1
 		JE CHG_CNT
-		XOR AX, 'X'
+		XOR AL, IN_PWD[2]
 		MOV [DI + 14], AX
 NO_GOODS_1:
 NO_SHOP:
@@ -669,16 +669,16 @@ L1:
 		XOR EDX, EDX
 		MOV AX, [SI + 10]
 		MOV BX, [SI + 14]
-		XOR AX, 'X'
-		XOR BX, 'X'
+		XOR AL, IN_PWD[2]
+		XOR BL, IN_PWD[2]
 		IMUL AX, BX
 		; 80x86低位在前
 		MOVSX EAX, AX; 拓展AX符号位
 		MOV G_COST, EAX
 		MOV AX, [SI + 12]
 		MOV BX, [SI + 16]
-		XOR AX, 'X'
-		XOR BX, 'X'
+		XOR AL, IN_PWD[2]
+		XOR BL, IN_PWD[2]
 		IMUL AX, BX
 		MOVSX EAX, AX
 		MOV G_PRO, EAX
@@ -889,14 +889,14 @@ PRINT_ONE PROC
 		; 输出利润率
 		WRITE <OFFSET PRINT_PRO>
 		MOV AX, WORD PTR [BX + 18]
-		XOR AX, 'X'
+		XOR AL, IN_PWD[2]
 		PUSH AX
 		CALL PRINT_NUM
 		COMMA
 		; 输出排名
 		WRITE <OFFSET PRINT_RANK>
 		MOV AX, WORD PTR [DI + 18]
-		XOR AX, 'X'
+		XOR AL, IN_PWD[2]
 		PUSH AX
 		CALL PRINT_NUM
 		CRLF
