@@ -5,8 +5,6 @@ option   casemap:none
 WinMain  proto :DWORD,:DWORD,:DWORD,:DWORD
 WndProc  proto :DWORD,:DWORD,:DWORD,:DWORD
 Display  proto :DWORD
-;Average  proto
-;ToStr	 proto :DWORD
 
 include	menuID.inc; 自己的ID文件
 
@@ -42,9 +40,7 @@ DlgName	    db  'MyDialog',0
 AboutMsg    db  'I am Yaning Wang from CS1607.',0
 hInstance   dd  0
 CommandLine dd  0
-;buf	    student  <>
-;	    student  <'Jin',96,98,100,98,'A'>
-;	    student  3 dup(<>)
+
 all_goods	goods	<'Bag', 12, 30, 100, 5, ?, 3>
 			goods	<'Pen', 35, 56, 70, 25, ?, 3>
 			goods	<'Book', 12, 30, 25, 5, ?, 4>
@@ -55,7 +51,7 @@ msg_inpre   db  'In Price',0
 msg_outpre  db  'Out Price',0
 msg_incnt   db  'In Count',0
 msg_outcnt  db  'Out Count',0
-msg_pro db  'Profile',0
+msg_pro db  'Profile(%)',0
 sum		db 0
 ;tostr
 num_str	db 10 dup(0)
@@ -65,6 +61,7 @@ ten		dw 10
 xgap	dd 0
 ygap 	dd 0
 g_idx	dd 0
+.stack 200
 ; 代码段
 .code
 Start:	invoke 	GetModuleHandle,NULL
@@ -102,6 +99,7 @@ WinMain proc   	hInst:DWORD, hPrevInst:DWORD, CmdLine:DWORD, CmdShow:DWORD
 	    mov		hWnd, eax
 	    invoke 	ShowWindow, hWnd, SW_SHOWNORMAL
 	    invoke 	UpdateWindow, hWnd
+		;主循环
 MsgLoop:
 		invoke 	GetMessage, addr msg, NULL, 0, 0
         cmp    	eax, 0
@@ -110,10 +108,12 @@ MsgLoop:
         invoke 	DispatchMessage, addr msg
 	    jmp    	MsgLoop
 ExitLoop:
+		; 结束程序
 		mov    	eax,msg.wParam
 	    ret
 WinMain	endp
 
+; 计算所有商品的利润率
 Average proc hWnd:dword
 		mov sum, 5
 		push eax
@@ -144,10 +144,11 @@ LOOP_AVE:
 		pop ecx
 		pop ebx
 		pop eax
-		invoke Display, hWnd
+		;invoke Display, hWnd
 		ret
 Average endp
 
+; 函数功能：将参数数字转换为字符串存储在num_str字符串中，len 存储
 ; 返回eax作为字符串长
 ToStr 	proc num:dword
 		push eax
@@ -190,17 +191,11 @@ WndProc proc   	hWnd:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD
 	    LOCAL  	hdc:HDC
 		.IF uMsg == WM_DESTROY
 			invoke PostQuitMessage,NULL
-		; 按键不进行操作
-		;.ELSEIF uMsg == WM_KEYDOWN
-		;	.IF wParam == VK_F1
-		;	.ENDIF
 		.ELSEIF uMsg == WM_COMMAND
 			; 按了退出
 			.IF wParam == File_Exit
 				invoke SendMessage,hWnd,WM_CLOSE,0,0
 			.ELSEIF wParam == Action_Average
-				;invoke Display,hWnd
-				; TODO average
 				invoke Average, hWnd
 			.ELSEIF wParam == Action_List
 				; 显示商品信息
@@ -209,8 +204,6 @@ WndProc proc   	hWnd:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD
 				; 显示作者信息
 				invoke MessageBox, hWnd, addr AboutMsg, addr AppName, MB_OK
 			.ENDIF
-		;.ELSEIF uMsg == WM_PAINT
-	     ;;redraw window again
 		.ELSE
             invoke DefWindowProc,hWnd,uMsg,wParam,lParam
             ret
@@ -218,8 +211,6 @@ WndProc proc   	hWnd:DWORD,uMsg:DWORD,wParam:DWORD,lParam:DWORD
   	    xor eax, eax
 	    ret
 WndProc endp
-
-
 
 Display proc    hWnd:DWORD
         XX	equ 10
@@ -232,26 +223,25 @@ Display proc    hWnd:DWORD
 		push ecx
 		push edx
 		push edi
-		xor eax, eax
-		xor ebx, ebx
-		xor ecx, ecx
-		xor edx, edi
+		xor  eax, eax
+		xor  ebx, ebx
+		xor  ecx, ecx
+		xor  edx, edi
 		invoke  GetDC, hWnd
-		mov     hdc, eax
+		mov hdc, eax
+		mov ygap, YY
 		; 输出最上面的信息栏
-		invoke  TextOut,hdc,XX+0*XX_GAP,edx,offset msg_name, 4
-		invoke  TextOut,hdc,XX+1*XX_GAP,edx,offset msg_inpre, 8
-		invoke  TextOut,hdc,XX+2*XX_GAP,edx,offset msg_outpre, 9
-		invoke  TextOut,hdc,XX+3*XX_GAP,edx,offset msg_incnt, 8
-		invoke  TextOut,hdc,XX+4*XX_GAP,edx,offset msg_outcnt, 9
-		invoke  TextOut,hdc,XX+5*XX_GAP,edx,offset msg_pro, 7
+		invoke  TextOut,hdc,XX+0*XX_GAP,ygap,offset msg_name, 4
+		invoke  TextOut,hdc,XX+1*XX_GAP,ygap,offset msg_inpre, 8
+		invoke  TextOut,hdc,XX+2*XX_GAP,ygap,offset msg_outpre, 9
+		invoke  TextOut,hdc,XX+3*XX_GAP,ygap,offset msg_incnt, 8
+		invoke  TextOut,hdc,XX+4*XX_GAP,ygap,offset msg_outcnt, 9
+		invoke  TextOut,hdc,XX+5*XX_GAP,ygap,offset msg_pro, 10
 		; 一共5件商品
 		mov sum, 5
-		mov ygap, YY
-		; ebx放置all_goods的里商品首地址
+		; ebx放置偏移
 		mov ebx, 0
 PRINT_LOOP:
-		;push ecx
 		mov xgap, XX
 		add ygap, YY_GAP
 		invoke TextOut,hdc,xgap,ygap,addr all_goods[ebx].g_name, all_goods[ebx].len;all_goods[ebx].len
@@ -272,14 +262,10 @@ PRINT_LOOP:
 		add xgap, XX_GAP
 		invoke ToStr, all_goods[ebx].pro
 		invoke TextOut,hdc,xgap,ygap,offset num_str, len
-		;pop ebx
 		add ebx, 24
-		;pop ecx
-		;dec ecx
 		dec sum
 		cmp sum, 0
 		jg  PRINT_LOOP
-		;loop PRINT_LOOP
 		; 结束，恢复环境
 		pop edi
 		pop edx
@@ -289,12 +275,3 @@ PRINT_LOOP:
 		ret
 Display endp
 end  Start
-
-;goods	struct
-;		g_name	db 	10 dup(0)
-;		inpre 	dw 	0
-;		outpre 	dw 0
-;		incnt	dw 0
-;		outcnt	dw 0
-;		pro		dw 0
-;goods 	ends
