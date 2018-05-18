@@ -34,3 +34,7 @@
 *.OVL
 asm/
 *.zip
+*.ilk
+*.pdb
+*.TR2
+*.RES
