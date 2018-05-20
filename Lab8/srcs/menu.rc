@@ -1,0 +1,20 @@
+#define File_Exit 10001
+#define Action_Average 10101
+#define Action_List	10102
+#define Help_About 	10201
+MyMenu  MENU
+BEGIN
+	POPUP "&File"
+  	BEGIN
+    	MENUITEM "E&xit", File_Exit
+	END
+	POPUP "&Action"
+	BEGIN
+		MENUITEM "A&verage", Action_Average
+		MENUITEM "L&ist", Action_List
+	END
+	POPUP "&Help"
+	BEGIN
+    	MENUITEM "A&bout",Help_About
+	END
+END
